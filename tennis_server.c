@@ -1,15 +1,3 @@
-/**
- * Author: biebera@msoe.edu <Andrew Bieber>
- * Class: CPE 2600
- * Professor: Turney
- *
- * @file tennis_server.c
- * @brief Serves and plays "Signal Tennis" with another process.
- *
- * Note: AI (GPT-5) was used to generate skeletons and comments for clarity.
- * All code verified and executed by Andrew Bieber.
- */
-
 #define _POSIX_C_SOURCE 200809L
 #include <signal.h>
 #include <stdio.h>
@@ -18,6 +6,7 @@
 #include <unistd.h>
 
 #define MAX_VOLLEYS 10
+#define GAME_OVER   999  // special marker value
 
 static pid_t opponent_pid = 0;
 
@@ -26,9 +15,17 @@ void handler(int sig, siginfo_t *info, void *ucontext) {
     opponent_pid = info->si_pid;
     int volley = info->si_value.sival_int;
 
-    printf("\aServer: got volley %d from PID %d\n", volley, opponent_pid);
+    if (volley == GAME_OVER) {
+        printf("Server: received GAME_OVER from PID %d — exiting.\n", opponent_pid);
+        exit(0);
+    }
+
+    printf("Server: got volley %d from PID %d\n", volley, opponent_pid);
     if (volley >= MAX_VOLLEYS) {
-        printf("Server: game over after %d volleys!\n", volley);
+        printf("Server: game over after %d volleys! notifying opponent...\n", volley);
+        union sigval end;
+        end.sival_int = GAME_OVER;
+        sigqueue(opponent_pid, SIGUSR1, end);
         exit(0);
     }
 
